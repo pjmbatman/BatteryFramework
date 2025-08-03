@@ -72,7 +72,7 @@ Dynamic: summary
 
 # Battery Foundation Model Framework
 
-A professional, modular framework for battery data analysis and modeling with integrated LiPM (Lithium-ion battery Performance Model) capabilities.
+A professional, modular framework for battery data analysis and modeling with integrated LiPM (Lithium-ion battery Performance Model) capabilities. This framework implements state-of-the-art transformer-based models for battery time series analysis, including masked autoencoding pretraining and downstream task fine-tuning.
 
 ## Features
 
@@ -86,15 +86,25 @@ A professional, modular framework for battery data analysis and modeling with in
 
 ## Installation
 
-### From Source
+### Using uv (Recommended)
 ```bash
-git clone https://github.com/battery-foundation/battery-foundation.git
+git clone <repository-url>
+cd BatteryFoundation
+uv venv
+uv pip install -e .
+```
+
+### Using pip
+```bash
+git clone <repository-url>
 cd BatteryFoundation
 pip install -e .
 ```
 
 ### Development Installation
 ```bash
+uv pip install -e ".[dev]"
+# or with pip
 pip install -e ".[dev]"
 ```
 
@@ -103,29 +113,30 @@ pip install -e ".[dev]"
 ### 1. Basic Training
 ```bash
 # Train LiPM model with default configuration
-battery-foundation train --config configs/default.yaml
+uv run battery-foundation train --config configs/default.yaml
 
-# Train small model for quick experimentation
-battery-foundation train --config configs/small_model.yaml
+# Train small model for quick experimentation  
+uv run battery-foundation train --config configs/small_model.yaml
+
+# Train large model for best performance
+uv run battery-foundation train --config configs/large_model.yaml
 ```
 
 ### 2. Fine-tune for Downstream Tasks
 ```bash
 # Fine-tune for SOH prediction
-battery-foundation finetune --config configs/soh.yaml --checkpoint checkpoints/best_model.pth
+uv run battery-foundation train --config configs/soh.yaml
 
-# Fine-tune for SOC estimation
-battery-foundation finetune --config configs/soc.yaml --checkpoint checkpoints/best_model.pth
+# Fine-tune for SOC estimation  
+uv run battery-foundation train --config configs/soc.yaml
 ```
 
-### 3. Evaluation and Prediction
-```bash
-# Evaluate model performance
-battery-foundation evaluate --config configs/default.yaml --checkpoint checkpoints/best_model.pth
-
-# Generate predictions
-battery-foundation predict --config configs/default.yaml --checkpoint checkpoints/best_model.pth --save-predictions
-```
+### 3. Available Configurations
+- `configs/default.yaml` - Standard training setup
+- `configs/small_model.yaml` - Lightweight model for testing
+- `configs/large_model.yaml` - High-capacity model for best performance
+- `configs/soh.yaml` - State of Health prediction task
+- `configs/soc.yaml` - State of Charge estimation task
 
 ## Configuration
 
@@ -149,10 +160,12 @@ architecture:
 data:
   dataset_name: "NASA"
   data_path: "../data/processed"
-  datasets: ["NASA", "MATR"]  # Multiple datasets
+  datasets: ["NASA"]  # List of datasets to include
   patch_len: 64
   patch_num: 16
-  # ... other parameters
+  patch_stride: -1  # -1 for auto
+  n_var: 2  # Voltage and Current
+  normalize: true
 ```
 
 ### Training Configuration
@@ -208,7 +221,27 @@ class MyCustomModel(nn.Module):
     pass
 ```
 
-## Data Format
+## Data Preparation
+
+### Data Directory Structure
+```
+data/
+├── processed/
+│   ├── NASA/
+│   │   ├── NASA_B0005.pkl
+│   │   ├── NASA_B0006.pkl
+│   │   └── ...
+│   ├── MATR/
+│   │   ├── MATR_b1c0.pkl
+│   │   └── ...
+│   └── CALCE/
+│       ├── CALCE_CS2_33.pkl
+│       └── ...
+└── raw/
+    └── ... (original dataset files)
+```
+
+### Data Format
 
 The framework expects battery data in pickle format with the following structure:
 
@@ -283,6 +316,36 @@ The framework has been tested on various battery datasets with the following per
 - **MATR Dataset**: MAE < 0.03 for SOC estimation
 - **Training Speed**: ~1000 samples/second on RTX 3080
 - **Memory Usage**: ~8GB GPU memory for large model
+
+## Troubleshooting
+
+### Common Issues
+
+1. **ModuleNotFoundError**: Make sure to reinstall after making changes
+   ```bash
+   uv pip install -e .
+   ```
+
+2. **Dataset loading 0 samples**: Check that:
+   - Data path in config points to correct directory
+   - Dataset files exist in the specified format
+   - Patch length configuration is appropriate for your data
+
+3. **CUDA/Memory errors**: 
+   - Reduce batch size in config
+   - Use smaller model variant (small_model.yaml)
+   - Ensure CUDA-compatible PyTorch installation
+
+4. **Tensor dimension errors**: Usually resolved by reinstalling after code changes
+   ```bash
+   uv pip install -e .
+   ```
+
+### Development Tips
+
+- Use `configs/small_model.yaml` for faster experimentation
+- Monitor GPU memory usage with smaller batch sizes first
+- Check data loading with a single sample before full training
 
 ## Contributing
 

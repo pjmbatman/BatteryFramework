@@ -164,11 +164,14 @@ class BatteryDataset(Dataset):
                 qdqc_patches.append(q_patch)
             qdqc_patches = np.array(qdqc_patches)
             
-            # Create time and mask tensors
-            # t should be [patch_num, patch_len] for time indices within each patch
-            t = torch.arange(self.patch_len).float().unsqueeze(0).repeat(self.patch_num, 1)
-            # tm should be [patch_num, patch_len] as time mask for each patch  
-            tm = torch.ones(self.patch_num, self.patch_len, dtype=torch.bool)
+            # Create time and mask tensors (following original LiPM Basic_ir pattern)
+            # Add embedding token slot at the beginning
+            emb_t_mask = torch.ones((self.patch_num, 1), dtype=torch.bool) 
+            _t_mask = torch.ones(self.patch_num, self.patch_len, dtype=torch.bool)
+            tm = torch.cat((emb_t_mask, _t_mask), dim=1)  # [patch_num, seq_len+1]
+            
+            _time = torch.arange(self.patch_len).float().unsqueeze(0).repeat(self.patch_num, 1)
+            t = torch.cat((torch.zeros((self.patch_num, 1)), _time), dim=1)  # [patch_num, seq_len+1]
             # pm should be [patch_num] as patch mask
             pm = torch.ones(self.patch_num, dtype=torch.bool)
             

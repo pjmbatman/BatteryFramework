@@ -107,7 +107,7 @@ class iBlock(nn.Module):
     def __init__(self, config):
         super().__init__()
         
-        # Attention parameters
+        # Attention parameters (hardcoded values from original LiPM)
         self.n_head = 8
         self.q_k_dim = 32
         self.v_dim = 32
@@ -135,25 +135,19 @@ class iBlock(nn.Module):
         """Forward pass of iBlock"""
         batch_n, pn, pl = x.shape[0], x.shape[1], x.shape[2]
         
-        # Add embedding token
+        # Add embedding token (following original LiPM exactly)
         emb_token = self.emb_token.expand(batch_n, pn, 1, -1)
-        _x = torch.cat((emb_token, x), dim=2)  # [batch, patches, seq_len+1, vars]
+        _x = torch.cat((emb_token, x), dim=2)
         
-        # Compute Q, K, V
-        Q_out = self.Q_weight(_x)  # [batch_n, pn, pl+1, n_head*q_k_dim]
-        K_out = self.K_weight(_x)  # [batch_n, pn, pl+1, n_head*q_k_dim] 
-        V_out = self.V_weight(_x)  # [batch_n, pn, pl+1, n_head*v_dim]
-        
-        Q = Q_out.view(batch_n * pn, pl + 1, self.n_head, self.q_k_dim)
-        K = K_out.view(batch_n * pn, pl + 1, self.n_head, self.q_k_dim)
-        V = V_out.view(batch_n * pn, pl + 1, self.n_head, self.v_dim)
-        
-        # Apply positional encoding
-        t = t.view(batch_n * pn, -1)
+        Q = self.Q_weight(_x).view(batch_n*pn, pl+1, self.n_head, self.q_k_dim)
+        K = self.K_weight(_x).view(batch_n*pn, pl+1, self.n_head, self.q_k_dim)
+        V = self.V_weight(_x).view(batch_n*pn, pl+1, self.n_head, self.v_dim)
+
+        t = t.view(batch_n*pn, -1)
         Q, K = self.pe(Q, t), self.pe(K, t)
         Q, K, V = Q.transpose(1, 2), K.transpose(1, 2), V.transpose(1, 2)
         
-        # Prepare attention mask
+        # Prepare attention mask (following original LiPM exactly)
         if mask is not None:
             if len(mask.shape) == 3:
                 mask_mat = mask.unsqueeze(-1) * mask.unsqueeze(-2)

@@ -267,7 +267,14 @@ class LiPMModel(nn.Module):
     
     def calculate_q_loss(self, pred: torch.Tensor, y: torch.Tensor, 
                         t_mask: torch.Tensor) -> tuple:
-        """Calculate capacity prediction loss"""
+        """Calculate capacity prediction loss (following original LiPM exactly)"""
+        # pred comes from head as [batch, patches, seq_len, vars], need to match y [batch, patches, vars]
+        # Take mean over sequence dimension to get patch-level prediction
+        if len(pred.shape) == 4:  # [batch, patches, seq_len, vars]
+            pred = pred.mean(dim=2)  # [batch, patches, vars]
+            # Also convert t_mask from sequence-level to patch-level
+            t_mask = t_mask.float().mean(dim=2)  # [batch, patches]
+        
         shape = y.shape
         pred = pred.view(shape[0], -1, shape[-1])
         y = y.view(shape[0], -1, shape[-1])
@@ -301,12 +308,16 @@ class LiPMModel(nn.Module):
         """
         vc, QdQc, t, tm, pm = batch
         
-        # Generate masks for pretraining
-        forward_mask, loss_mask, masked_vc = self.get_mask(vc, pm, tm)
+        # Generate masks for pretraining (following original LiPM exactly)
+        forward_mask, loss_mask, masked_vc = self.get_mask(vc, pm, tm[:, :, 1:])
         
         # Get embeddings from masked and full inputs
         emb_mask = self.backbone(masked_vc, t, tm, forward_mask)
         emb_full = self.backbone(vc, t, tm, pm)
+        
+        # Remove embedding token for head processing (following original)
+        t = t[:, :, 1:]
+        tm = tm[:, :, 1:]
         
         # Predict voltage-current and capacity
         pred_vc = self.inter_head(emb_mask, t, tm, forward_mask)

@@ -88,9 +88,12 @@ class BatteryTrainer:
             # Track losses
             self.loss_tracker.update(loss_dict)
             
-            # Update progress bar
+            # Update progress bar with detailed losses
+            current_losses = self.loss_tracker.get_latest()
             pbar.set_postfix({
-                'loss': f"{loss.item():.4f}",
+                'total': f"{loss.item():.4f}",
+                'MMAE': f"{current_losses.get('MMAE_mse', 0):.4f}",
+                'CIR': f"{current_losses.get('CIR_mse', 0):.4f}",
                 'lr': f"{self.optimizer.param_groups[0]['lr']:.2e}"
             })
             
@@ -153,10 +156,16 @@ class BatteryTrainer:
             val_losses = self.validate()
             if val_losses:
                 training_history['val_losses'].append(val_losses)
-                logger.info(f"Epoch {epoch}: Train Loss: {train_losses['total']:.4f}, "
+                logger.info(f"Epoch {epoch}: "
+                           f"Total Loss: {train_losses['total']:.4f} | "
+                           f"MMAE Loss: {train_losses.get('MMAE_mse', 0):.4f} | "
+                           f"CIR Loss: {train_losses.get('CIR_mse', 0):.4f} | "
                            f"Val Loss: {val_losses['total']:.4f}")
             else:
-                logger.info(f"Epoch {epoch}: Train Loss: {train_losses['total']:.4f}")
+                logger.info(f"Epoch {epoch}: "
+                           f"Total Loss: {train_losses['total']:.4f} | "
+                           f"MMAE Loss: {train_losses.get('MMAE_mse', 0):.4f} | "
+                           f"CIR Loss: {train_losses.get('CIR_mse', 0):.4f}")
             
             # Save checkpoint
             current_loss = val_losses.get('total', train_losses['total'])

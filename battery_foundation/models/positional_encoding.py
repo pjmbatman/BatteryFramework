@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.cuda.amp import autocast
+from torch.amp import autocast
 
 
 class RoPE(nn.Module):
@@ -27,7 +27,7 @@ class RoPE(nn.Module):
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Apply RoPE to input tensor"""
-        with autocast(enabled=False):
+        with autocast('cuda', enabled=False):
             x_ = x.reshape(*x.shape[:-1], -1, 2).float()
             x_ = torch.view_as_complex(x_)
             freqs_cis = self.broadcast(self.freqs_cis[:x.shape[1]], x_)
@@ -48,14 +48,14 @@ class IrregularRoPE(nn.Module):
         return thetas
     
     def broadcast(self, x: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
-        """Broadcast frequency components based on timestamps"""
-        assert self.thetas.shape[0] == (x.shape[-1])
+        """Broadcast frequency components based on timestamps (following original LiPM)"""
+        assert self.thetas.shape[0] == (x.shape[-1])  # thetas equals the last dim
         shape = [d if i != 2 else 1 for i, d in enumerate(x.shape)]
         freqs_cis = self.compute_freqs_cis(t, shape)
         return freqs_cis.to(x.device)
     
     def compute_freqs_cis(self, t: torch.Tensor, shape: list) -> torch.Tensor:
-        """Compute frequency components for given timestamps"""
+        """Compute frequency components for given timestamps (following original LiPM)"""
         f_shape = list(t.shape)
         f_shape.append(self.thetas.shape[0])
         freqs = torch.outer(t.flatten(), self.thetas.to(t.device)).float().reshape(*f_shape)
@@ -64,7 +64,7 @@ class IrregularRoPE(nn.Module):
     
     def forward(self, x: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
         """Apply irregular RoPE to input tensor with timestamps"""
-        with autocast(enabled=False):
+        with autocast('cuda', enabled=False):
             x_ = x.reshape(*x.shape[:-1], -1, 2).float()
             x_ = torch.view_as_complex(x_)
             freqs_cis = self.broadcast(x_, t)
