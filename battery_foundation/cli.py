@@ -134,15 +134,24 @@ def create_dataset(config: Config, split: str = 'train') -> BatteryDataset:
     
     dataset_class = DatasetRegistry.get(dataset_name)
     
+    # Get datasets list from config
+    datasets_to_load = getattr(config, 'datasets', ['NASA'])
+    
     # Create dataset with config parameters
-    dataset = dataset_class(
-        data_path=config.data_path,
-        patch_len=config.patch_len,
-        patch_num=config.patch_num,
-        patch_stride=config.patch_stride,
-        n_var=config.n_var,
-        normalize=getattr(config, 'normalize', True)
-    )
+    dataset_kwargs = {
+        'data_path': config.data_path,
+        'patch_len': config.patch_len,
+        'patch_num': config.patch_num,
+        'patch_stride': config.patch_stride,
+        'n_var': config.n_var,
+        'normalize': getattr(config, 'normalize', True)
+    }
+    
+    # Only pass dataset_names for 'battery' dataset (multi-dataset loader)
+    if dataset_name == 'battery':
+        dataset_kwargs['dataset_names'] = datasets_to_load
+    
+    dataset = dataset_class(**dataset_kwargs)
     
     logger.info(f"Created {dataset_name} dataset with {len(dataset)} samples")
     

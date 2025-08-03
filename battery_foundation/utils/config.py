@@ -1,8 +1,8 @@
 import yaml
 import os
 from pathlib import Path
-from typing import Dict, Any, Union
-from dataclasses import dataclass
+from typing import Dict, Any, Union, List
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -20,8 +20,9 @@ class Config:
     down_n_head: int = 4
     
     # Data configuration
-    dataset_name: str = "NASA"
-    data_path: str = "data/processed"
+    dataset_name: str = "battery"
+    data_path: str = "../data/processed"
+    datasets: List[str] = field(default_factory=lambda: ["NASA"])  # Support multiple datasets
     patch_len: int = 64
     patch_num: int = 16
     patch_stride: int = -1
@@ -90,7 +91,20 @@ class Config:
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> 'Config':
         """Create config from dictionary"""
-        return cls(**config_dict)
+        # Flatten nested structure - bring data section to top level
+        flattened = {}
+        
+        # Add all top-level items
+        for key, value in config_dict.items():
+            if key != 'data':
+                flattened[key] = value
+        
+        # Add data section items to top level
+        if 'data' in config_dict:
+            for key, value in config_dict['data'].items():
+                flattened[key] = value
+        
+        return cls(**flattened)
 
 
 def load_config(config_path: Union[str, Path]) -> Config:

@@ -5,6 +5,7 @@ import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 from ..utils.registry import DatasetRegistry
 from ..utils.logger import get_logger
@@ -51,7 +52,11 @@ class BatteryDataset(Dataset):
     
     def _load_data(self):
         """Load battery data from pickle files"""
-        for dataset_name in self.dataset_names:
+        # Progress bar for datasets
+        dataset_pbar = tqdm(self.dataset_names, desc="Loading datasets", unit="dataset")
+        
+        for dataset_name in dataset_pbar:
+            dataset_pbar.set_description(f"Loading {dataset_name}")
             dataset_path = self.data_path / dataset_name
             if not dataset_path.exists():
                 logger.warning(f"Dataset path not found: {dataset_path}")
@@ -60,7 +65,11 @@ class BatteryDataset(Dataset):
             pickle_files = list(dataset_path.glob("*.pkl"))
             logger.info(f"Loading {len(pickle_files)} files from {dataset_name}")
             
-            for pickle_file in pickle_files:
+            # Progress bar for files within each dataset
+            file_pbar = tqdm(pickle_files, desc=f"  {dataset_name} files", unit="file", leave=False)
+            
+            for pickle_file in file_pbar:
+                file_pbar.set_description(f"  {dataset_name}: {pickle_file.name}")
                 try:
                     with open(pickle_file, 'rb') as f:
                         battery_data = pickle.load(f)
@@ -76,6 +85,10 @@ class BatteryDataset(Dataset):
                         
                 except Exception as e:
                     logger.error(f"Error loading {pickle_file}: {e}")
+            
+            file_pbar.close()
+        
+        dataset_pbar.close()
     
     def _process_battery_data(self, battery_data: Dict[str, Any]) -> List[Dict[str, torch.Tensor]]:
         """Process raw battery data into patches suitable for LiPM model"""
@@ -262,3 +275,38 @@ class MATRDataset(BatteryDataset):
     """MATR-specific battery dataset"""
     def __init__(self, data_path: str, **kwargs):
         super().__init__(data_path, dataset_names=['MATR'], **kwargs)
+
+
+@DatasetRegistry.register("hust")
+class HUSTDataset(BatteryDataset):
+    """HUST-specific battery dataset"""
+    def __init__(self, data_path: str, **kwargs):
+        super().__init__(data_path, dataset_names=['HUST'], **kwargs)
+
+
+@DatasetRegistry.register("calce")
+class CALCEDataset(BatteryDataset):
+    """CALCE-specific battery dataset"""
+    def __init__(self, data_path: str, **kwargs):
+        super().__init__(data_path, dataset_names=['CALCE'], **kwargs)
+
+
+@DatasetRegistry.register("ox")
+class OXDataset(BatteryDataset):
+    """OX-specific battery dataset"""
+    def __init__(self, data_path: str, **kwargs):
+        super().__init__(data_path, dataset_names=['OX'], **kwargs)
+
+
+@DatasetRegistry.register("rwth")
+class RWTHDataset(BatteryDataset):
+    """RWTH-specific battery dataset"""
+    def __init__(self, data_path: str, **kwargs):
+        super().__init__(data_path, dataset_names=['RWTH'], **kwargs)
+
+
+@DatasetRegistry.register("ucl")
+class UCLDataset(BatteryDataset):
+    """UCL-specific battery dataset"""
+    def __init__(self, data_path: str, **kwargs):
+        super().__init__(data_path, dataset_names=['UCL'], **kwargs)

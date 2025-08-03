@@ -36,6 +36,7 @@ def load_config_from_yaml(config_path: str) -> Config:
         data_config = yaml_config['data']
         flattened_config['dataset_name'] = data_config.get('dataset_name', 'NASA')
         flattened_config['data_path'] = data_config.get('data_path', 'data/processed')
+        flattened_config['datasets'] = data_config.get('datasets', ['NASA'])  # Add datasets field
         flattened_config['patch_len'] = data_config.get('patch_len', 64)
         flattened_config['patch_num'] = data_config.get('patch_num', 16)
         flattened_config['patch_stride'] = data_config.get('patch_stride', -1)

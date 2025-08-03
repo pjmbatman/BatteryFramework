@@ -7,9 +7,9 @@ model:
   
 # Data configuration
 data:
-  dataset_name: "nasa"
+  dataset_name: "battery"  # Use 'battery' to load multiple datasets
   data_path: "../data/processed"
-  datasets: ["nasa"]  # List of datasets to include
+  datasets: ["HUST", "MATR", "CALCE", "NASA", "OX", "RWTH", "UCL"]  # All available datasets
   patch_len: 64
   patch_num: 16
   patch_stride: -1  # -1 for auto
