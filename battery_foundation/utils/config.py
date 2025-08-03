@@ -1,5 +1,5 @@
-import yaml
 import os
+import yaml
 from pathlib import Path
 from typing import Dict, Any, Union, List
 from dataclasses import dataclass, field
@@ -91,20 +91,7 @@ class Config:
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> 'Config':
         """Create config from dictionary"""
-        # Flatten nested structure - bring data section to top level
-        flattened = {}
-        
-        # Add all top-level items
-        for key, value in config_dict.items():
-            if key != 'data':
-                flattened[key] = value
-        
-        # Add data section items to top level
-        if 'data' in config_dict:
-            for key, value in config_dict['data'].items():
-                flattened[key] = value
-        
-        return cls(**flattened)
+        return cls(**config_dict)
 
 
 def load_config(config_path: Union[str, Path]) -> Config:
