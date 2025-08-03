@@ -1,0 +1,9 @@
+include README.md
+include LICENSE
+include requirements.txt
+include MANIFEST.in
+recursive-include battery_foundation *.py
+recursive-include configs *.yaml
+recursive-include examples *.py
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]

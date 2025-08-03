@@ -1,0 +1,63 @@
+# Default configuration for Battery Foundation Model
+
+# Model configuration
+model:
+  name: "lipm"
+  setting: 2  # Model size setting (0-5, where 2 is medium)
+  
+# Data configuration
+data:
+  dataset_name: "NASA"
+  data_path: "../data/processed"
+  datasets: ["NASA"]  # List of datasets to include
+  patch_len: 64
+  patch_num: 16
+  patch_stride: -1  # -1 for auto
+  n_var: 2  # Voltage and Current
+  normalize: true
+  
+# Training configuration
+training:
+  batch_size: 4
+  lr: 1.0e-4
+  l2: 1.0e-3
+  max_epoch: 100
+  max_iter: 50000
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  T_0: 10  # For cosine annealing
+  
+# Model architecture
+architecture:
+  d_model: 256
+  n_head: 8
+  n_layer: 6
+  emb_dim: 256
+  down_dim: 256
+  down_n_head: 4
+  dp: 0.3  # Dropout probability
+  norm: "rsm"  # Normalization type (rsm or layer)
+  pre_norm: 1
+
+# Masking for pretraining
+masking:
+  channel_ratio: 0.3
+  patch_ratio: 0.3
+  weight_MAE: 1.0
+  weight_Q: 1.0
+
+# Task configuration  
+task:
+  type: "ir_pretrain"  # Main task type
+  downstream_task: null  # SOH, SOC, etc.
+
+# Paths
+paths:
+  checkpoint_dir: "checkpoints"
+  log_dir: "logs" 
+  output_dir: "outputs"
+
+# Hardware
+hardware:
+  device: "cuda"
+  seed: 42

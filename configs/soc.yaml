@@ -1,0 +1,69 @@
+# SOC (State of Charge) prediction configuration
+
+# Model configuration
+model:
+  name: "lipm"
+  setting: 2
+
+# Data configuration  
+data:
+  dataset_name: "NASA"
+  data_path: "../data/processed"
+  datasets: ["NASA"]
+  patch_len: 64
+  patch_num: 16
+  patch_stride: -1
+  n_var: 2
+  normalize: true
+
+# Training configuration
+training:
+  batch_size: 128
+  lr: 1.0e-4
+  l2: 1.0e-4
+  max_epoch: 50
+  max_iter: 15000
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  T_0: 5
+
+# Model architecture
+architecture:
+  d_model: 256
+  n_head: 8
+  n_layer: 6
+  emb_dim: 256
+  down_dim: 256
+  down_n_head: 4
+  dp: 0.2
+  norm: "rsm"
+  pre_norm: 1
+
+# Task configuration
+task:
+  type: "finetune"
+  downstream_task: "soc"
+
+# SOC-specific configuration
+soc:
+  hidden_dim: 256
+  num_layers: 3
+  dropout: 0.2
+  prediction_mode: "sequence"  # sequence or point
+  use_lstm: true
+  lstm_hidden: 128
+  lstm_layers: 2
+  temporal_weight: 0.1
+  freeze_backbone: true
+  min_usable_soc: 0.1
+
+# Paths
+paths:
+  checkpoint_dir: "checkpoints/soc"
+  log_dir: "logs/soc"
+  output_dir: "outputs/soc"
+
+# Hardware
+hardware:
+  device: "cuda"
+  seed: 42

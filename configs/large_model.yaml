@@ -1,0 +1,63 @@
+# Large model configuration for Battery Foundation Model
+
+# Model configuration
+model:
+  name: "lipm"
+  setting: 4  # Large model
+  
+# Data configuration
+data:
+  dataset_name: "multi"
+  data_path: "../data/processed"
+  datasets: ["NASA", "MATR", "CALCE", "HUST"]  # Multiple datasets
+  patch_len: 128
+  patch_num: 32
+  patch_stride: -1
+  n_var: 2
+  normalize: true
+  
+# Training configuration
+training:
+  batch_size: 128
+  lr: 5.0e-5
+  l2: 1.0e-3
+  max_epoch: 200
+  max_iter: 100000
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  T_0: 20
+  
+# Model architecture
+architecture:
+  d_model: 768
+  n_head: 12
+  n_layer: 18
+  emb_dim: 768
+  down_dim: 512
+  down_n_head: 8
+  dp: 0.3
+  norm: "rsm"
+  pre_norm: 1
+
+# Masking for pretraining
+masking:
+  channel_ratio: 0.4
+  patch_ratio: 0.4
+  weight_MAE: 1.0
+  weight_Q: 1.0
+
+# Task configuration  
+task:
+  type: "ir_pretrain"
+  downstream_task: null
+
+# Paths
+paths:
+  checkpoint_dir: "checkpoints/large"
+  log_dir: "logs/large"
+  output_dir: "outputs/large"
+
+# Hardware
+hardware:
+  device: "cuda"
+  seed: 42

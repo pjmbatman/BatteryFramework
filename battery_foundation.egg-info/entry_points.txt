@@ -1,0 +1,3 @@
+[console_scripts]
+battery-foundation = battery_foundation.cli:main
+bf = battery_foundation.cli:main

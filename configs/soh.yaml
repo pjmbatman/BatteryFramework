@@ -1,0 +1,64 @@
+# SOH (State of Health) prediction configuration
+
+# Model configuration  
+model:
+  name: "lipm"
+  setting: 2
+  
+# Data configuration
+data:
+  dataset_name: "NASA"
+  data_path: "../data/processed"
+  datasets: ["NASA"]
+  patch_len: 64
+  patch_num: 16
+  patch_stride: -1
+  n_var: 2
+  normalize: true
+
+# Training configuration
+training:
+  batch_size: 128
+  lr: 5.0e-5
+  l2: 1.0e-4
+  max_epoch: 50
+  max_iter: 10000
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  T_0: 5
+
+# Model architecture
+architecture:
+  d_model: 256
+  n_head: 8
+  n_layer: 6
+  emb_dim: 256
+  down_dim: 256
+  down_n_head: 4
+  dp: 0.2
+  norm: "rsm"
+  pre_norm: 1
+
+# Task configuration
+task:
+  type: "finetune"
+  downstream_task: "soh"
+
+# SOH-specific configuration
+soh:
+  hidden_dim: 256
+  num_layers: 2
+  dropout: 0.2
+  pooling: "attention"  # mean, max, last, attention
+  freeze_backbone: true
+
+# Paths
+paths:
+  checkpoint_dir: "checkpoints/soh"
+  log_dir: "logs/soh"
+  output_dir: "outputs/soh"
+
+# Hardware
+hardware:
+  device: "cuda"
+  seed: 42

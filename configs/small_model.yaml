@@ -1,0 +1,63 @@
+# Small model configuration for Battery Foundation Model
+
+# Model configuration
+model:
+  name: "lipm"
+  setting: 0  # Small model
+  
+# Data configuration
+data:
+  dataset_name: "NASA"
+  data_path: "../data/processed"
+  datasets: ["NASA"]
+  patch_len: 32
+  patch_num: 8
+  patch_stride: -1
+  n_var: 2
+  normalize: true
+  
+# Training configuration
+training:
+  batch_size: 512
+  lr: 2.0e-4
+  l2: 1.0e-3
+  max_epoch: 50
+  max_iter: 25000
+  optimizer: "adamw"
+  scheduler: "cosine_annealing"
+  T_0: 5
+  
+# Model architecture
+architecture:
+  d_model: 64
+  n_head: 4
+  n_layer: 2
+  emb_dim: 64
+  down_dim: 128
+  down_n_head: 2
+  dp: 0.2
+  norm: "rsm"
+  pre_norm: 1
+
+# Masking for pretraining
+masking:
+  channel_ratio: 0.2
+  patch_ratio: 0.2
+  weight_MAE: 1.0
+  weight_Q: 1.0
+
+# Task configuration  
+task:
+  type: "ir_pretrain"
+  downstream_task: null
+
+# Paths
+paths:
+  checkpoint_dir: "checkpoints/small"
+  log_dir: "logs/small"
+  output_dir: "outputs/small"
+
+# Hardware
+hardware:
+  device: "cuda"
+  seed: 42
