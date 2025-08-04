@@ -18,7 +18,7 @@ data:
   
 # Training configuration
 training:
-  batch_size: 64
+  batch_size: 256
   lr: 1.0e-4
   l2: 1.0e-3
   max_epoch: 10

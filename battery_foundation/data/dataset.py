@@ -110,27 +110,45 @@ class BatteryDataset(Dataset):
                 current = np.array(cycle['current_in_A'])
                 time = np.array(cycle['time_in_s'])
                 
-                # Get capacity values for this cycle
-                charge_capacity = cycle.get('charge_capacity_in_Ah', [0])
-                discharge_capacity = cycle.get('discharge_capacity_in_Ah', [0])
+                # Get capacity time series for this cycle (preserve original time series)
+                charge_capacity = cycle.get('charge_capacity_in_Ah', [])
+                discharge_capacity = cycle.get('discharge_capacity_in_Ah', [])
                 
+                # Convert to numpy arrays and ensure same length as voltage/current
                 if isinstance(charge_capacity, list) and len(charge_capacity) > 0:
-                    q_charge = max(charge_capacity) if charge_capacity else 0
+                    q_charge_series = np.array(charge_capacity)
+                    # Ensure same length as voltage
+                    if len(q_charge_series) != len(voltage):
+                        logger.warning(f"Charge capacity length ({len(q_charge_series)}) != voltage length ({len(voltage)}), padding with last value")
+                        if len(q_charge_series) < len(voltage):
+                            # Pad with last value
+                            q_charge_series = np.pad(q_charge_series, (0, len(voltage) - len(q_charge_series)), 'edge')
+                        else:
+                            # Truncate to voltage length
+                            q_charge_series = q_charge_series[:len(voltage)]
                 else:
-                    q_charge = charge_capacity if isinstance(charge_capacity, (int, float)) else 0
+                    q_charge_series = np.zeros(len(voltage))
                 
                 if isinstance(discharge_capacity, list) and len(discharge_capacity) > 0:
-                    q_discharge = max(discharge_capacity) if discharge_capacity else 0
+                    q_discharge_series = np.array(discharge_capacity)
+                    # Ensure same length as voltage
+                    if len(q_discharge_series) != len(voltage):
+                        logger.warning(f"Discharge capacity length ({len(q_discharge_series)}) != voltage length ({len(voltage)}), padding with last value")
+                        if len(q_discharge_series) < len(voltage):
+                            # Pad with last value
+                            q_discharge_series = np.pad(q_discharge_series, (0, len(voltage) - len(q_discharge_series)), 'edge')
+                        else:
+                            # Truncate to voltage length
+                            q_discharge_series = q_discharge_series[:len(voltage)]
                 else:
-                    q_discharge = discharge_capacity if isinstance(discharge_capacity, (int, float)) else 0
+                    q_discharge_series = np.zeros(len(voltage))
                 
-                # Append to continuous series
+                # Append to continuous series (now using actual time series data)
                 all_voltage.extend(voltage)
                 all_current.extend(current)
                 all_time.extend(time)
-                # Repeat Q values for each time step in this cycle
-                all_q_discharge.extend([q_discharge] * len(voltage))
-                all_q_charge.extend([q_charge] * len(voltage))
+                all_q_discharge.extend(q_discharge_series)
+                all_q_charge.extend(q_charge_series)
                 
             except Exception as e:
                 logger.warning(f"Error processing cycle: {e}")
@@ -310,3 +328,24 @@ class UCLDataset(BatteryDataset):
     """UCL-specific battery dataset"""
     def __init__(self, data_path: str, **kwargs):
         super().__init__(data_path, dataset_names=['UCL'], **kwargs)
+
+
+@DatasetRegistry.register("snllfp")
+class SNLLFPDataset(BatteryDataset):
+    """SNLLFP-specific battery dataset"""
+    def __init__(self, data_path: str, **kwargs):
+        super().__init__(data_path, dataset_names=['SNLLFP'], **kwargs)
+
+
+@DatasetRegistry.register("ulpurdue")
+class ULPurdueDataset(BatteryDataset):
+    """ULPurdue-specific battery dataset"""
+    def __init__(self, data_path: str, **kwargs):
+        super().__init__(data_path, dataset_names=['ULPurdue'], **kwargs)
+
+
+@DatasetRegistry.register("hnei")
+class HNEIDataset(BatteryDataset):
+    """HNEI-specific battery dataset"""
+    def __init__(self, data_path: str, **kwargs):
+        super().__init__(data_path, dataset_names=['HNEI'], **kwargs)
