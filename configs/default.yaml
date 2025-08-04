@@ -9,7 +9,7 @@ model:
 data:
   dataset_name: "battery"  # Use 'battery' to load multiple datasets
   data_path: "data/processed"
-  datasets: ["CALCE", "NASA"]  # All available datasets
+  datasets: ["HUST", "MATR", "CALCE", "NASA", "RWTH"]  # All available datasets
   patch_len: 64
   patch_num: 16
   patch_stride: -1  # -1 for auto

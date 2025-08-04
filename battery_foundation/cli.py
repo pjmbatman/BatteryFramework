@@ -35,6 +35,9 @@ Examples:
   # Train with LODO (Leave-One-Domain-Out) - HUST as test set
   python -m battery_foundation.cli train --config configs/default.yaml --lodo HUST
   
+  # Train with LODO ALL - run training for each dataset as test set
+  python -m battery_foundation.cli train --config configs/default.yaml --lodo all
+  
   # Fine-tune for SOH prediction
   python -m battery_foundation.cli finetune --config configs/soh.yaml --checkpoint checkpoints/best_model.pth
   
@@ -69,7 +72,7 @@ Examples:
     parser.add_argument('--lr', type=float,
                        help='Override learning rate')
     parser.add_argument('--lodo', type=str,
-                       help='Leave-One-Domain-Out: specify dataset name for test set (e.g., HUST)')
+                       help='Leave-One-Domain-Out: specify dataset name for test set (e.g., HUST) or "all" to run for all datasets')
     
     # Evaluation specific arguments
     parser.add_argument('--eval-split', type=str, choices=['train', 'val', 'test'],
@@ -99,8 +102,12 @@ def setup_config(args: argparse.Namespace) -> Config:
     
     # Handle LODO configuration
     if args.lodo:
-        config.lodo_dataset = args.lodo
-        logger.info(f"LODO mode enabled: {args.lodo} will be used as test dataset")
+        if args.lodo.lower() == 'all':
+            config.lodo_all = True
+            logger.info("LODO ALL mode enabled: will run training for each dataset as test set")
+        else:
+            config.lodo_dataset = args.lodo
+            logger.info(f"LODO mode enabled: {args.lodo} will be used as test dataset")
     
     # Setup device
     if args.device == 'auto':
@@ -187,6 +194,15 @@ def train_command(args: argparse.Namespace, config: Config):
     """Execute training command"""
     logger.info("Starting training...")
     
+    # Check if LODO ALL mode is enabled
+    if hasattr(config, 'lodo_all') and config.lodo_all:
+        run_lodo_all_training(args, config)
+    else:
+        run_single_training(args, config)
+
+
+def run_single_training(args: argparse.Namespace, config: Config):
+    """Execute single training run"""
     # Create model
     model = create_model(config)
     
@@ -219,6 +235,72 @@ def train_command(args: argparse.Namespace, config: Config):
     logger.info("Training completed successfully!")
     
     # Save training history
+    save_training_history(history, config)
+
+
+def run_lodo_all_training(args: argparse.Namespace, config: Config):
+    """Execute LODO ALL training - run training for each dataset as test set"""
+    logger.info("Starting LODO ALL training - will train for each dataset as test set")
+    
+    # Get all available datasets
+    all_datasets = getattr(config, 'datasets', ['NASA'])
+    logger.info(f"Available datasets for LODO ALL: {all_datasets}")
+    
+    # Store results for all runs
+    all_results = {}
+    
+    for i, test_dataset_name in enumerate(all_datasets):
+        logger.info(f"\n{'='*60}")
+        logger.info(f"LODO ALL: Training {i+1}/{len(all_datasets)} - Test dataset: {test_dataset_name}")
+        logger.info(f"{'='*60}")
+        
+        # Create a copy of config for this run
+        run_config = type(config)()
+        for attr in dir(config):
+            if not attr.startswith('_'):
+                setattr(run_config, attr, getattr(config, attr))
+        
+        # Set the current test dataset
+        run_config.lodo_dataset = test_dataset_name
+        run_config.lodo_all = False  # Disable lodo_all for this run
+        
+        # Create output directory for this run
+        original_output_dir = run_config.output_dir
+        run_config.output_dir = os.path.join(original_output_dir, f"lodo_{test_dataset_name.lower()}")
+        
+        try:
+            # Run training for this dataset
+            run_single_training(args, run_config)
+            
+            # Load and store results
+            history_file = os.path.join(run_config.output_dir, 'training_history.json')
+            if os.path.exists(history_file):
+                import json
+                with open(history_file, 'r') as f:
+                    history = json.load(f)
+                all_results[test_dataset_name] = history
+                logger.info(f"✓ Completed training for {test_dataset_name}")
+            else:
+                logger.warning(f"✗ No history file found for {test_dataset_name}")
+                
+        except Exception as e:
+            logger.error(f"✗ Error during training for {test_dataset_name}: {e}")
+            all_results[test_dataset_name] = {"error": str(e)}
+    
+    # Save combined results
+    combined_results_file = os.path.join(original_output_dir, 'lodo_all_results.json')
+    import json
+    with open(combined_results_file, 'w') as f:
+        json.dump(all_results, f, indent=2)
+    
+    logger.info(f"\n{'='*60}")
+    logger.info("LODO ALL training completed!")
+    logger.info(f"Combined results saved to: {combined_results_file}")
+    logger.info(f"{'='*60}")
+
+
+def save_training_history(history: Dict[str, Any], config: Config):
+    """Save training history to file"""
     if config.output_dir:
         import json
         os.makedirs(config.output_dir, exist_ok=True)

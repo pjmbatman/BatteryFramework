@@ -6,8 +6,9 @@ The LODO (Leave-One-Domain-Out) feature allows you to evaluate model generalizat
 
 ## Usage
 
-### Basic Command
+### Basic Commands
 
+#### Single Dataset LODO
 ```bash
 uv run battery-foundation train --config configs/default.yaml --lodo HUST
 ```
@@ -17,6 +18,17 @@ This command will:
 - Use `HUST` as the test dataset
 - Train the model on the remaining datasets
 - Evaluate the model on `HUST` during training
+
+#### All Datasets LODO
+```bash
+uv run battery-foundation train --config configs/default.yaml --lodo all
+```
+
+This command will:
+- Run training for each dataset as the test set
+- Create separate output directories for each run
+- Generate a combined results file with all evaluations
+- Total of N training runs (where N = number of datasets)
 
 ### Available Datasets
 
@@ -40,6 +52,9 @@ uv run battery-foundation train --config configs/default.yaml --lodo NASA
 
 # Train with CALCE as test set
 uv run battery-foundation train --config configs/default.yaml --lodo CALCE
+
+# Run LODO for all datasets (7 separate training runs)
+uv run battery-foundation train --config configs/default.yaml --lodo all
 ```
 
 ## How It Works
@@ -60,11 +75,19 @@ uv run battery-foundation train --config configs/default.yaml --lodo CALCE
 
 ## Output
 
+### Single Dataset LODO
 The training will produce:
 - Regular checkpoints saved during training
 - Best model checkpoint based on validation loss
 - Training history including test loss for the LODO dataset
 - Logs showing the dataset splits and evaluation metrics
+
+### All Datasets LODO
+The training will produce:
+- Separate output directory for each dataset run (`outputs/lodo_hust/`, `outputs/lodo_nasa/`, etc.)
+- Individual training histories for each run
+- Combined results file (`outputs/lodo_all_results.json`) with all evaluations
+- Progress tracking showing which dataset is currently being processed
 
 ## Configuration
 
