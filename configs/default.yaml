@@ -8,8 +8,8 @@ model:
 # Data configuration
 data:
   dataset_name: "battery"  # Use 'battery' to load multiple datasets
-  data_path: "../data/processed"
-  datasets: ["HUST", "MATR", "CALCE", "NASA", "OX", "RWTH", "UCL"]  # All available datasets
+  data_path: "data/processed"
+  datasets: ["CALCE", "NASA"]  # All available datasets
   patch_len: 64
   patch_num: 16
   patch_stride: -1  # -1 for auto
@@ -18,10 +18,10 @@ data:
   
 # Training configuration
 training:
-  batch_size: 1
+  batch_size: 64
   lr: 1.0e-4
   l2: 1.0e-3
-  max_epoch: 100
+  max_epoch: 10
   max_iter: 50000
   optimizer: "adamw"
   scheduler: "cosine_annealing"

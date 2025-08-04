@@ -32,6 +32,9 @@ Examples:
   # Train with custom data path
   python -m battery_foundation.cli train --config configs/default.yaml --data-path /path/to/data
   
+  # Train with LODO (Leave-One-Domain-Out) - HUST as test set
+  python -m battery_foundation.cli train --config configs/default.yaml --lodo HUST
+  
   # Fine-tune for SOH prediction
   python -m battery_foundation.cli finetune --config configs/soh.yaml --checkpoint checkpoints/best_model.pth
   
@@ -65,6 +68,8 @@ Examples:
                        help='Override batch size')
     parser.add_argument('--lr', type=float,
                        help='Override learning rate')
+    parser.add_argument('--lodo', type=str,
+                       help='Leave-One-Domain-Out: specify dataset name for test set (e.g., HUST)')
     
     # Evaluation specific arguments
     parser.add_argument('--eval-split', type=str, choices=['train', 'val', 'test'],
@@ -91,6 +96,11 @@ def setup_config(args: argparse.Namespace) -> Config:
         config.batch_size = args.batch_size
     if args.lr:
         config.lr = args.lr
+    
+    # Handle LODO configuration
+    if args.lodo:
+        config.lodo_dataset = args.lodo
+        logger.info(f"LODO mode enabled: {args.lodo} will be used as test dataset")
     
     # Setup device
     if args.device == 'auto':
@@ -137,6 +147,21 @@ def create_dataset(config: Config, split: str = 'train') -> BatteryDataset:
     # Get datasets list from config
     datasets_to_load = getattr(config, 'datasets', ['NASA'])
     
+    # Handle LODO: filter out the test dataset from training/validation
+    if hasattr(config, 'lodo_dataset') and config.lodo_dataset and split != 'test':
+        lodo_dataset = config.lodo_dataset.upper()
+        if lodo_dataset in datasets_to_load:
+            datasets_to_load = [d for d in datasets_to_load if d != lodo_dataset]
+            logger.info(f"LODO: Excluded {lodo_dataset} from {split} set. Remaining datasets: {datasets_to_load}")
+        else:
+            logger.warning(f"LODO dataset '{lodo_dataset}' not found in available datasets: {datasets_to_load}")
+    
+    # For test split in LODO mode, only load the specified dataset
+    if hasattr(config, 'lodo_dataset') and config.lodo_dataset and split == 'test':
+        lodo_dataset = config.lodo_dataset.upper()
+        datasets_to_load = [lodo_dataset]
+        logger.info(f"LODO: Using {lodo_dataset} as test dataset")
+    
     # Create dataset with config parameters
     dataset_kwargs = {
         'data_path': config.data_path,
@@ -153,7 +178,7 @@ def create_dataset(config: Config, split: str = 'train') -> BatteryDataset:
     
     dataset = dataset_class(**dataset_kwargs)
     
-    logger.info(f"Created {dataset_name} dataset with {len(dataset)} samples")
+    logger.info(f"Created {dataset_name} dataset for {split} with {len(dataset)} samples from {datasets_to_load}")
     
     return dataset
 
@@ -169,12 +194,19 @@ def train_command(args: argparse.Namespace, config: Config):
     train_dataset = create_dataset(config, 'train')
     val_dataset = None  # TODO: Implement train/val split
     
+    # Create test dataset for LODO mode
+    test_dataset = None
+    if hasattr(config, 'lodo_dataset') and config.lodo_dataset:
+        test_dataset = create_dataset(config, 'test')
+        logger.info(f"LODO mode: Created test dataset with {len(test_dataset)} samples")
+    
     # Create data loaders
     train_loader = BatteryDataLoader(train_dataset, config, shuffle=True)
     val_loader = BatteryDataLoader(val_dataset, config, shuffle=False) if val_dataset else None
+    test_loader = BatteryDataLoader(test_dataset, config, shuffle=False) if test_dataset else None
     
     # Create trainer
-    trainer = BatteryTrainer(model, config, train_loader, val_loader)
+    trainer = BatteryTrainer(model, config, train_loader, val_loader, test_loader)
     
     # Load checkpoint if provided
     if args.checkpoint:

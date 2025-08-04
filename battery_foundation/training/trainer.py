@@ -23,7 +23,8 @@ class BatteryTrainer:
                  model: torch.nn.Module,
                  config: Config,
                  train_dataloader: BatteryDataLoader,
-                 val_dataloader: Optional[BatteryDataLoader] = None):
+                 val_dataloader: Optional[BatteryDataLoader] = None,
+                 test_dataloader: Optional[BatteryDataLoader] = None):
         """
         Initialize trainer
         
@@ -32,11 +33,13 @@ class BatteryTrainer:
             config: Configuration object
             train_dataloader: Training data loader
             val_dataloader: Validation data loader (optional)
+            test_dataloader: Test data loader for LODO mode (optional)
         """
         self.model = model
         self.config = config
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
+        self.test_dataloader = test_dataloader
         
         # Setup device
         self.device = torch.device(config.device if torch.cuda.is_available() else "cpu")
@@ -131,6 +134,25 @@ class BatteryTrainer:
         
         return val_loss_tracker.get_average()
     
+    def test(self) -> Dict[str, float]:
+        """Test the model on LODO test dataset"""
+        if self.test_dataloader is None:
+            return {}
+        
+        self.model.eval()
+        test_loss_tracker = LossTracker(['total', 'MMAE_mse', 'CIR_mse', 'MMAE_mae', 'CIR_mae'])
+        
+        with torch.no_grad():
+            for batch in tqdm(self.test_dataloader, desc="LODO Test"):
+                # Move batch to device
+                batch = BatteryDataLoader.move_batch_to_device(batch, self.device)
+                
+                # Forward pass
+                loss, loss_dict = self.model(batch)
+                test_loss_tracker.update(loss_dict)
+        
+        return test_loss_tracker.get_average()
+    
     def train(self) -> Dict[str, Any]:
         """Main training loop"""
         logger.info("Starting training...")
@@ -139,6 +161,7 @@ class BatteryTrainer:
         training_history = {
             'train_losses': [],
             'val_losses': [],
+            'test_losses': [],
             'learning_rates': [],
             'epochs': []
         }
@@ -158,27 +181,47 @@ class BatteryTrainer:
             val_losses = self.validate()
             if val_losses:
                 training_history['val_losses'].append(val_losses)
-                logger.info(f"Epoch {epoch}: "
-                           f"Total: {train_losses['total']:.4f} | "
-                           f"MMAE_mse: {train_losses.get('MMAE_mse', 0):.4f} | "
-                           f"MMAE_mae: {train_losses.get('MMAE_mae', 0):.4f} | "
-                           f"CIR_mse: {train_losses.get('CIR_mse', 0):.4f} | "
-                           f"CIR_mae: {train_losses.get('CIR_mae', 0):.4f} | "
-                           f"Val Loss: {val_losses['total']:.4f}")
+                log_msg = f"Epoch {epoch}: " \
+                          f"Total: {train_losses['total']:.4f} | " \
+                          f"MMAE_mse: {train_losses.get('MMAE_mse', 0):.4f} | " \
+                          f"MMAE_mae: {train_losses.get('MMAE_mae', 0):.4f} | " \
+                          f"CIR_mse: {train_losses.get('CIR_mse', 0):.4f} | " \
+                          f"CIR_mae: {train_losses.get('CIR_mae', 0):.4f} | " \
+                          f"Val Loss: {val_losses['total']:.4f}"
             else:
-                logger.info(f"Epoch {epoch}: "
-                           f"Total: {train_losses['total']:.4f} | "
-                           f"MMAE_mse: {train_losses.get('MMAE_mse', 0):.4f} | "
-                           f"MMAE_mae: {train_losses.get('MMAE_mae', 0):.4f} | "
-                           f"CIR_mse: {train_losses.get('CIR_mse', 0):.4f} | "
-                           f"CIR_mae: {train_losses.get('CIR_mae', 0):.4f}")
+                log_msg = f"Epoch {epoch}: " \
+                          f"Total: {train_losses['total']:.4f} | " \
+                          f"MMAE_mse: {train_losses.get('MMAE_mse', 0):.4f} | " \
+                          f"MMAE_mae: {train_losses.get('MMAE_mae', 0):.4f} | " \
+                          f"CIR_mse: {train_losses.get('CIR_mse', 0):.4f} | " \
+                          f"CIR_mae: {train_losses.get('CIR_mae', 0):.4f}"
+            
+            # Test evaluation (LODO mode)
+            test_losses = self.test()
+            if test_losses:
+                training_history['test_losses'].append(test_losses)
+                log_msg += f" | Test Total: {test_losses['total']:.4f} | " \
+                          f"Test MMAE_mse: {test_losses.get('MMAE_mse', 0):.4f} | " \
+                          f"Test MMAE_mae: {test_losses.get('MMAE_mae', 0):.4f} | " \
+                          f"Test CIR_mse: {test_losses.get('CIR_mse', 0):.4f} | " \
+                          f"Test CIR_mae: {test_losses.get('CIR_mae', 0):.4f}"
+            
+            logger.info(log_msg)
             
             # Save checkpoint
             current_loss = val_losses.get('total', train_losses['total'])
             if current_loss < self.best_loss:
                 self.best_loss = current_loss
                 self._save_checkpoint(is_best=True)
-                logger.info(f"New best model saved with loss: {self.best_loss:.4f}")
+                logger.info(f"New best model saved with validation loss: {self.best_loss:.4f}")
+            
+            # Log detailed test loss if available (for LODO mode)
+            if test_losses:
+                logger.info(f"LODO Test Details - Total: {test_losses['total']:.4f} | "
+                           f"MMAE_mse: {test_losses.get('MMAE_mse', 0):.4f} | "
+                           f"MMAE_mae: {test_losses.get('MMAE_mae', 0):.4f} | "
+                           f"CIR_mse: {test_losses.get('CIR_mse', 0):.4f} | "
+                           f"CIR_mae: {test_losses.get('CIR_mae', 0):.4f}")
             
             # Regular checkpoint
             if (epoch + 1) % 10 == 0:

@@ -5,9 +5,11 @@ Summary: A professional framework for battery data analysis and modeling with Li
 Home-page: https://github.com/battery-foundation/battery-foundation
 Author: Battery Foundation Team
 Author-email: battery.foundation@example.com
+License: UNKNOWN
 Project-URL: Bug Reports, https://github.com/battery-foundation/battery-foundation/issues
 Project-URL: Source, https://github.com/battery-foundation/battery-foundation
 Project-URL: Documentation, https://battery-foundation.readthedocs.io/
+Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta
 Classifier: Intended Audience :: Science/Research
 Classifier: Intended Audience :: Developers
